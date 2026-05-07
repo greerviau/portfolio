@@ -123,13 +123,18 @@
     if (!slug) {
       content.innerHTML = '<p id="error">No post specified.</p>';
     } else {
-      fetch(`posts/${slug}.md`)
+      fetch(`posts/${slug}/post.md`)
         .then(r => {
           if (!r.ok) throw new Error('Post not found');
           return r.text();
         })
         .then(md => {
-          content.innerHTML = marked.parse(md);
+          const renderer = new marked.Renderer();
+          renderer.image = ({ href, title, text }) => {
+            const src = href.startsWith('http') ? href : `posts/${slug}/${href}`;
+            return `<figure style="text-align:center;margin:24px 0;"><img src="${src}" alt="${text}"${title ? ` title="${title}"` : ''} style="max-width:100%;max-height:300px;object-fit:contain;">${text ? `<figcaption style="font-size:14px;color:var(--hr-color);margin-top:8px;">${text}</figcaption>` : ''}</figure>`;
+          };
+          content.innerHTML = marked.parse(md, { renderer });
           const h1 = content.querySelector('h1');
           if (h1) document.title = h1.textContent + ' | Greer Viau';
         })
