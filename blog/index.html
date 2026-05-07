@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Blog | Greer Viau</title>
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="../g.png">
+  <style>
+    body {
+      font-family: 'Lucida Console', monospace;
+      font-size: 18px;
+      color: var(--text-color);
+      background-color: var(--bg-color);
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 50px;
+      box-sizing: border-box;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    :root {
+      --text-color: #ddd;
+      --bg-color: #111;
+      --link-color: #ddd;
+      --hr-color: #666;
+      --section-title-color: #fff;
+      --link-underline-color: #bbb;
+    }
+    .light-theme {
+      --text-color: #111;
+      --bg-color: #fff;
+      --link-color: #111;
+      --hr-color: #ccc;
+      --section-title-color: #000;
+      --link-underline-color: #000;
+    }
+    nav {
+      padding: 20px 0;
+      font-size: 20px;
+    }
+    nav a {
+      color: var(--link-color);
+      text-decoration: none;
+      margin-right: 20px;
+    }
+    nav a:hover { text-decoration: underline; }
+    h1 {
+      font-size: 36px;
+      color: var(--section-title-color);
+      margin-bottom: 10px;
+    }
+    hr {
+      border: none;
+      height: 2px;
+      background-color: var(--hr-color);
+      margin: 20px 0;
+    }
+    .post-list { list-style: none; padding: 0; margin: 0; }
+    .post-item {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--hr-color);
+    }
+    .post-item:last-child { border-bottom: none; }
+    .post-date {
+      font-size: 14px;
+      color: var(--hr-color);
+      margin-bottom: 6px;
+    }
+    .post-title {
+      font-size: 22px;
+      margin: 0 0 8px 0;
+    }
+    .post-title a {
+      color: var(--link-color);
+      text-decoration: none;
+    }
+    .post-title a:hover { text-decoration: underline; }
+    .post-desc {
+      font-size: 16px;
+      color: var(--link-underline-color);
+      margin: 0;
+    }
+    .theme-toggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .theme-toggle .moon { display: none; }
+    .light-theme .theme-toggle .moon { display: block; }
+    .light-theme .theme-toggle .sun { display: none; }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <img class="sun" src="../sun.svg" alt="Sun Icon" width="50" height="50">
+    <img class="moon" src="../moon.svg" alt="Moon Icon" width="50" height="50">
+  </button>
+
+  <nav>
+    <a href="../index.html">← Home</a>
+  </nav>
+
+  <h1>Blog</h1>
+  <hr>
+
+  <ul class="post-list" id="post-list">
+    <li>Loading...</li>
+  </ul>
+
+  <script>
+    function toggleTheme() {
+      document.body.classList.toggle('light-theme');
+    }
+
+    fetch('posts.json')
+      .then(r => r.json())
+      .then(posts => {
+        const list = document.getElementById('post-list');
+        if (!posts.length) {
+          list.innerHTML = '<li>No posts yet.</li>';
+          return;
+        }
+        list.innerHTML = posts
+          .sort((a, b) => new Date(b.date) - new Date(a.date))
+          .map(p => `
+            <li class="post-item">
+              <div class="post-date">${p.date}</div>
+              <h2 class="post-title"><a href="post.html?slug=${p.slug}">${p.title}</a></h2>
+              ${p.description ? `<p class="post-desc">${p.description}</p>` : ''}
+            </li>
+          `).join('');
+      });
+  </script>
+</body>
+</html>

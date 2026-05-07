@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Blog | Greer Viau</title>
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="../g.png">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body {
+      font-family: 'Lucida Console', monospace;
+      font-size: 18px;
+      color: var(--text-color);
+      background-color: var(--bg-color);
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 50px 80px;
+      box-sizing: border-box;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    :root {
+      --text-color: #ddd;
+      --bg-color: #111;
+      --link-color: #ddd;
+      --hr-color: #666;
+      --section-title-color: #fff;
+      --link-underline-color: #bbb;
+      --code-bg: #222;
+    }
+    .light-theme {
+      --text-color: #111;
+      --bg-color: #fff;
+      --link-color: #111;
+      --hr-color: #ccc;
+      --section-title-color: #000;
+      --link-underline-color: #000;
+      --code-bg: #f4f4f4;
+    }
+    nav {
+      padding: 20px 0;
+      font-size: 20px;
+    }
+    nav a {
+      color: var(--link-color);
+      text-decoration: none;
+      margin-right: 20px;
+    }
+    nav a:hover { text-decoration: underline; }
+    hr {
+      border: none;
+      height: 2px;
+      background-color: var(--hr-color);
+      margin: 20px 0;
+    }
+    #post-content h1 { color: var(--section-title-color); font-size: 32px; }
+    #post-content h2 { color: var(--section-title-color); font-size: 26px; margin-top: 40px; }
+    #post-content h3 { color: var(--section-title-color); font-size: 22px; }
+    #post-content p { line-height: 1.7; }
+    #post-content a { color: var(--link-underline-color); }
+    #post-content code {
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Lucida Console', monospace;
+    }
+    #post-content pre {
+      background: var(--code-bg);
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: 4px;
+    }
+    #post-content pre code {
+      background: none;
+      padding: 0;
+    }
+    #post-content blockquote {
+      border-left: 3px solid var(--hr-color);
+      margin: 0;
+      padding-left: 20px;
+      color: var(--hr-color);
+    }
+    #post-content img { max-width: 100%; }
+    .theme-toggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .theme-toggle .moon { display: none; }
+    .light-theme .theme-toggle .moon { display: block; }
+    .light-theme .theme-toggle .sun { display: none; }
+    #error { color: #e55; }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <img class="sun" src="../sun.svg" alt="Sun Icon" width="50" height="50">
+    <img class="moon" src="../moon.svg" alt="Moon Icon" width="50" height="50">
+  </button>
+
+  <nav>
+    <a href="../index.html">← Home</a>
+    <a href="index.html">Blog</a>
+  </nav>
+  <hr>
+
+  <article id="post-content">Loading...</article>
+
+  <script>
+    function toggleTheme() {
+      document.body.classList.toggle('light-theme');
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('slug');
+    const content = document.getElementById('post-content');
+
+    if (!slug) {
+      content.innerHTML = '<p id="error">No post specified.</p>';
+    } else {
+      fetch(`posts/${slug}.md`)
+        .then(r => {
+          if (!r.ok) throw new Error('Post not found');
+          return r.text();
+        })
+        .then(md => {
+          content.innerHTML = marked.parse(md);
+          const h1 = content.querySelector('h1');
+          if (h1) document.title = h1.textContent + ' | Greer Viau';
+        })
+        .catch(err => {
+          content.innerHTML = `<p id="error">Post not found.</p>`;
+        });
+    }
+  </script>
+</body>
+</html>
