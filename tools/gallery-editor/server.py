@@ -11,8 +11,10 @@ them like scripts/resize_photos.py), and is not part of the published site.
 """
 
 import argparse
+import hashlib
 import io
 import json
+import mimetypes
 import sys
 import webbrowser
 from http import HTTPStatus
@@ -33,6 +35,7 @@ STATIC = {
     "/editor.js": ("editor.js", "text/javascript; charset=utf-8"),
     "/editor.css": ("editor.css", "text/css; charset=utf-8"),
 }
+SITE_ICONS = {"g.png", "sun.svg", "moon.svg"}
 IMAGE_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 
 
@@ -112,6 +115,34 @@ def normalize_gallery(groups, images):
     return result
 
 
+def preview_manifest(groups, images):
+    """Build a photos.json the gallery page accepts from unsaved editor state.
+
+    Unlike normalize_gallery, this never fails: photos whose file is gone are
+    skipped and blank alt text falls back to the file name.
+    """
+    result = []
+    for group in groups if isinstance(groups, list) else []:
+        photos = []
+        for photo in group.get("photos", []) if isinstance(group, dict) else []:
+            file = photo.get("file") if isinstance(photo, dict) else None
+            if not isinstance(file, str) or file != PurePosixPath(file).name or not (images / file).is_file():
+                continue
+            alt = photo.get("alt")
+            entry = {"file": file, "alt": alt.strip() if isinstance(alt, str) and alt.strip() else file}
+            caption = photo.get("caption")
+            if isinstance(caption, str) and caption.strip():
+                entry["caption"] = caption.strip()
+            width, height = displayed_size(images / file)
+            entry.update(width=width, height=height)
+            photos.append(entry)
+        title = group.get("title") if isinstance(group, dict) else None
+        entry = {"title": title.strip()} if isinstance(title, str) and title.strip() else {}
+        entry["photos"] = photos
+        result.append(entry)
+    return result
+
+
 def write_manifest(manifest, groups):
     tmp = manifest.with_name(manifest.name + ".tmp")
     tmp.write_text(json.dumps(groups, indent=2, ensure_ascii=False) + "\n")
@@ -146,6 +177,20 @@ def make_server(root, port=8770, quiet=False):
     images = root / "photography" / "images"
     originals = root / "photography" / "originals"
     manifest = root / "photography" / "photos.json"
+    site = (root / "photography").resolve()
+    draft = {"groups": None}
+
+    def site_file(rel):
+        """Map a /site/ path to a file the gallery page needs, or None."""
+        if rel == "" or rel.endswith("/"):
+            rel += "index.html"
+        if rel in SITE_ICONS:
+            path = root / rel
+        else:
+            path = (root / rel).resolve()
+            if site not in path.parents or originals.resolve() in path.parents:
+                return None
+        return path if path.is_file() else None
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -159,6 +204,23 @@ def make_server(root, port=8770, quiet=False):
             self.send_header("Cache-Control", cache)
             self.end_headers()
             self.wfile.write(body)
+
+        def send_file(self, path):
+            stat = path.stat()
+            etag = '"' + hashlib.md5(f"{stat.st_mtime_ns}-{stat.st_size}".encode()).hexdigest() + '"'
+            if self.headers.get("If-None-Match") == etag:
+                self.send_response(HTTPStatus.NOT_MODIFIED)
+                self.send_header("ETag", etag)
+                self.end_headers()
+                return
+            content_type = IMAGE_TYPES.get(path.suffix.lower()) or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(stat.st_size))
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("ETag", etag)
+            self.end_headers()
+            self.wfile.write(path.read_bytes())
 
         def send_json(self, status, payload):
             self.send_bytes(status, json.dumps(payload).encode(), "application/json")
@@ -196,7 +258,24 @@ def make_server(root, port=8770, quiet=False):
                         raise RequestError(HTTPStatus.BAD_REQUEST, 'Body must be {"groups": [...]}')
                     groups = normalize_gallery(groups, images)
                     write_manifest(manifest, groups)
+                    draft["groups"] = None
                     self.send_json(200, {"groups": groups, "unlisted": list_unlisted(images, groups)})
+                elif route == ("PUT", "/api/draft"):
+                    try:
+                        draft["groups"] = json.loads(self.read_body())["groups"]
+                    except (json.JSONDecodeError, KeyError, TypeError):
+                        raise RequestError(HTTPStatus.BAD_REQUEST, 'Body must be {"groups": [...]}')
+                    self.send_json(200, {})
+                elif self.command == "GET" and url.path == "/site/photography/photos.json":
+                    if draft["groups"] is None:
+                        self.send_json(200, read_manifest(manifest))
+                    else:
+                        self.send_json(200, preview_manifest(draft["groups"], images))
+                elif self.command == "GET" and url.path.startswith("/site/"):
+                    path = site_file(unquote(url.path[len("/site/"):]))
+                    if path is None:
+                        raise RequestError(HTTPStatus.NOT_FOUND, "Not found")
+                    self.send_file(path)
                 elif route == ("POST", "/api/upload"):
                     name = parse_qs(url.query).get("name", [""])[0]
                     images.mkdir(parents=True, exist_ok=True)
@@ -209,8 +288,7 @@ def make_server(root, port=8770, quiet=False):
                     path = images / name
                     if name != PurePosixPath(name).name or not path.is_file():
                         raise RequestError(HTTPStatus.NOT_FOUND, "Not found")
-                    content_type = IMAGE_TYPES.get(path.suffix.lower(), "application/octet-stream")
-                    self.send_bytes(200, path.read_bytes(), content_type, cache="no-cache")
+                    self.send_file(path)
                 else:
                     raise RequestError(HTTPStatus.NOT_FOUND, "Not found")
             except RequestError as err:

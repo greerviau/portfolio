@@ -10,12 +10,16 @@
   <header class="bar">
     <h1>Gallery editor</h1>
     <span class="status" id="status" role="status"></span>
+    <div class="segmented" role="group" aria-label="View">
+      <button id="view-board" type="button" aria-pressed="true">Board</button>
+      <button id="view-preview" type="button" aria-pressed="false">Preview</button>
+    </div>
     <label class="button" for="file-input">Add photos</label>
     <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
     <button id="add-section" type="button">Add section</button>
     <button id="save" class="primary" type="button" disabled>Save</button>
   </header>
-  <main class="layout">
+  <main class="layout" id="board">
     <div id="sections" class="sections"></div>
     <aside class="side">
       <section id="inspector" class="panel"></section>
@@ -26,6 +30,18 @@
       </section>
     </aside>
   </main>
+  <section id="preview" class="preview-pane" hidden>
+    <div class="preview-bar">
+      <div class="segmented" role="group" aria-label="Preview width">
+        <button id="width-desktop" type="button" aria-pressed="true">Desktop</button>
+        <button id="width-mobile" type="button" aria-pressed="false">Mobile</button>
+      </div>
+      <span class="hint">The site's own gallery page, rendered from your unsaved changes.</span>
+    </div>
+    <div id="frame-wrap" class="frame-wrap">
+      <iframe id="frame" title="Gallery preview" scrolling="no"></iframe>
+    </div>
+  </section>
   <div id="drop-overlay" class="overlay" hidden>Drop images to upload</div>
   <script src="/editor.js"></script>
 </body>

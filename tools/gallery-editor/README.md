@@ -14,6 +14,8 @@ Run `uv run tools/gallery-editor/server.py` from the repository root, then open 
 - Select a photo to edit its alt text, caption, and section. Press Delete to move the selected photo to Unplaced photos.
 - Press Save, or Cmd/Ctrl+S, to write `photography/photos.json`.
 
+**Preview** (top bar) shows the site's own gallery page, with its real script and stylesheet, fed by your unsaved changes. It refreshes about half a second after each edit. **Desktop** renders at 1280 px and **Mobile** at 390 px. Empty sections do not appear, as on the site, and photos without alt text use their file name there.
+
 A red dot on a photo means it has no alt text. The site rejects the whole gallery when any photo lacks alt text, so Save refuses until every placed photo has it.
 
 Unplaced photos are files in `photography/images/` that `photos.json` does not list. Photos moved there lose their alt text and caption when you save.
@@ -22,6 +24,7 @@ Unplaced photos are files in `photography/images/` that `photos.json` does not l
 
 - Uploads go to `photography/images/`. Files longer than 2000 px are shrunk, and the original is kept in `photography/originals/`, as in `scripts/resize_photos.py`. A name that is already taken gets a numeric suffix.
 - Save sets `width` and `height` from the files on disk.
+- `/site/` serves the site's files from `photography/` (not `originals/`) and the top-level icons. `photography/photos.json` there returns the unsaved draft that the page sent to `/api/draft`, or the saved file when there is no draft. Saving clears the draft.
 - The server listens on 127.0.0.1 only. It rejects requests with another `Host` header and writes only when the request carries the `X-Gallery-Editor` header, which a web page on another origin cannot send without a preflight the server does not answer.
 
 ## Tests

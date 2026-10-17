@@ -201,3 +201,16 @@ textarea { resize: vertical; min-height: 64px; }
   .layout { grid-template-columns: 1fr; }
   .side { position: static; max-height: none; }
 }
+
+.segmented { display: inline-flex; }
+.segmented button { border-radius: 0; margin-left: -1px; }
+.segmented button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.segmented button:last-child { border-radius: 0 6px 6px 0; }
+.segmented button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: #fff; position: relative; }
+
+.preview-pane { padding: 20px; }
+.preview-pane[hidden], .layout[hidden] { display: none; }
+.preview-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.preview-bar .hint { margin: 0; }
+.frame-wrap { position: relative; width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; }
+.frame-wrap iframe { display: block; border: 0; transform-origin: top left; background: #111; }

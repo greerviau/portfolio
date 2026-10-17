@@ -193,6 +193,72 @@ class UploadTest(EditorTestCase):
         self.assertEqual(list(self.images.iterdir()), [])
 
 
+class SitePreviewTest(EditorTestCase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "photography" / "index.html").write_text("<p>gallery page</p>")
+        (self.root / "photography" / "gallery.js").write_text("// gallery")
+        (self.root / "photography" / "originals").mkdir()
+        (self.root / "photography" / "originals" / "o.jpg").write_bytes(jpeg(30, 20))
+        (self.root / "sun.svg").write_text("<svg/>")
+        (self.root / "secret.txt").write_text("secret")
+        self.add_image("a.jpg", 300, 200)
+
+    def put_draft(self, groups, **kwargs):
+        headers = kwargs.pop("headers", {**HEADERS, "Content-Type": "application/json"})
+        return self.request("PUT", "/api/draft", json.dumps({"groups": groups}).encode(), headers, **kwargs)
+
+    def test_serves_the_site_files_the_gallery_page_needs(self):
+        self.assertEqual(self.request("GET", "/site/photography/index.html"), (200, b"<p>gallery page</p>"))
+        self.assertEqual(self.request("GET", "/site/photography/")[1], b"<p>gallery page</p>")
+        self.assertEqual(self.request("GET", "/site/photography/gallery.js")[0], 200)
+        self.assertEqual(self.request("GET", "/site/sun.svg")[0], 200)
+        status, body = self.request("GET", "/site/photography/images/a.jpg")
+        self.assertEqual((status, body[:2]), (200, b"\xff\xd8"))
+
+    def test_does_not_serve_originals_or_files_outside_the_site(self):
+        for path in ("/site/photography/originals/o.jpg", "/site/secret.txt", "/site/../secret.txt",
+                     "/site/photography/../secret.txt", "/site/photography/%2e%2e/secret.txt", "/site/photography/nope.js"):
+            self.assertEqual(self.request("GET", path)[0], 404, path)
+
+    def test_photos_json_is_the_saved_file_until_a_draft_is_sent(self):
+        saved = [{"photos": [{"file": "a.jpg", "alt": "Saved", "width": 300, "height": 200}]}]
+        self.manifest.write_text(json.dumps(saved))
+        self.assertEqual(json.loads(self.request("GET", "/site/photography/photos.json")[1]), saved)
+
+    def test_draft_replaces_photos_json_and_fills_what_the_gallery_page_requires(self):
+        self.manifest.write_text("[]")
+        status, _ = self.put_draft([
+            {"title": " Trip ", "photos": [{"file": "a.jpg", "alt": " ", "caption": "", "width": 1, "height": 1}, {"file": "gone.jpg", "alt": "x"}]},
+            {"title": "  ", "photos": []},
+        ])
+        self.assertEqual(status, 200)
+        draft = json.loads(self.request("GET", "/site/photography/photos.json")[1])
+        self.assertEqual(draft, [
+            {"title": "Trip", "photos": [{"file": "a.jpg", "alt": "a.jpg", "width": 300, "height": 200}]},
+            {"photos": []},
+        ])
+        self.assertEqual(self.manifest.read_text(), "[]")
+
+    def test_saving_discards_the_draft(self):
+        self.put_draft([{"photos": [{"file": "a.jpg", "alt": "Draft"}]}])
+        self.put([{"photos": [{"file": "a.jpg", "alt": "Saved"}]}])
+        served = json.loads(self.request("GET", "/site/photography/photos.json")[1])
+        self.assertEqual(served[0]["photos"][0]["alt"], "Saved")
+
+    def test_draft_requires_the_editor_header(self):
+        self.assertEqual(self.put_draft([], headers={"Content-Type": "application/json"})[0], 403)
+
+    def test_unchanged_files_answer_conditional_requests_with_304(self):
+        url = f"http://127.0.0.1:{self.port}/site/photography/images/a.jpg"
+        with urllib.request.urlopen(url) as res:
+            etag = res.headers["ETag"]
+        req = urllib.request.Request(url, headers={"If-None-Match": etag})
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            urllib.request.urlopen(req)
+        self.assertEqual(caught.exception.code, 304)
+
+
 class StaticFilesTest(EditorTestCase):
     def test_serves_the_editor_page(self):
         status, body = self.request("GET", "/")

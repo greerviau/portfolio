@@ -4,8 +4,10 @@
   const els = {
     sections: $('sections'), tray: $('tray'), trayCount: $('tray-count'), inspector: $('inspector'),
     status: $('status'), save: $('save'), addSection: $('add-section'), fileInput: $('file-input'),
-    overlay: $('drop-overlay')
+    overlay: $('drop-overlay'), board: $('board'), preview: $('preview'), frame: $('frame'), frameWrap: $('frame-wrap'),
+    viewBoard: $('view-board'), viewPreview: $('view-preview'), widthDesktop: $('width-desktop'), widthMobile: $('width-mobile')
   };
+  const FRAME_WIDTHS = { desktop: 1280, mobile: 390 };
 
   let groups = [];
   let tray = [];
@@ -15,6 +17,12 @@
   let drag = null; // { kind: 'photo' | 'section' | 'files', file?, id? }
   let drop = null; // { array, index, el, side } for photos and files; { index, el, side } for sections
   let busy = false;
+  let view = 'board';
+  let frameMode = 'desktop';
+  let previewTimer = null;
+  let previewSnapshot = null;
+  let lightTheme = false;
+  let frameObserver = null;
 
   const imageUrl = file => `/images/${encodeURIComponent(file)}`;
 
@@ -365,6 +373,77 @@
       updateChrome();
     }
   }
+
+  // Preview: the site's real gallery page, fed with the unsaved state
+
+  function fitFrame() {
+    const doc = els.frame.contentDocument;
+    const width = FRAME_WIDTHS[frameMode];
+    const scale = Math.min(1, els.frameWrap.clientWidth / width);
+    const height = doc?.documentElement ? doc.documentElement.scrollHeight : 600;
+    els.frame.style.width = `${width}px`;
+    els.frame.style.height = `${height}px`;
+    els.frame.style.transform = `scale(${scale})`;
+    els.frameWrap.style.height = `${Math.ceil(height * scale)}px`;
+  }
+
+  els.frame.addEventListener('load', () => {
+    const doc = els.frame.contentDocument;
+    if (!doc?.body) return;
+    doc.addEventListener('click', event => { if (event.target.closest('a')) event.preventDefault(); });
+    if (lightTheme) {
+      doc.body.classList.add('light-theme');
+      doc.querySelector('.theme-toggle')?.setAttribute('aria-pressed', 'true');
+    }
+    new MutationObserver(() => { lightTheme = doc.body.classList.contains('light-theme'); })
+      .observe(doc.body, { attributes: true, attributeFilter: ['class'] });
+    frameObserver?.disconnect();
+    frameObserver = new ResizeObserver(fitFrame);
+    frameObserver.observe(doc.documentElement);
+    fitFrame();
+  });
+  window.addEventListener('resize', () => { if (view === 'preview') fitFrame(); });
+
+  function schedulePreview(delay = 500) {
+    if (view !== 'preview') return;
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(refreshPreview, delay);
+  }
+
+  async function refreshPreview() {
+    const current = snapshot();
+    if (current === previewSnapshot && els.frame.src) return;
+    previewSnapshot = current;
+    try {
+      await api('PUT', '/api/draft', JSON.stringify({ groups: payload() }), 'application/json');
+      if (els.frame.src) els.frame.contentWindow.location.reload();
+      else els.frame.src = '/site/photography/index.html';
+    } catch (error) {
+      previewSnapshot = null;
+      setStatus(error.message, true);
+    }
+  }
+
+  function setView(next) {
+    view = next;
+    els.board.hidden = next !== 'board';
+    els.preview.hidden = next !== 'preview';
+    els.viewBoard.setAttribute('aria-pressed', String(next === 'board'));
+    els.viewPreview.setAttribute('aria-pressed', String(next === 'preview'));
+    if (next === 'preview') schedulePreview(0);
+  }
+
+  function setFrameMode(mode) {
+    frameMode = mode;
+    els.widthDesktop.setAttribute('aria-pressed', String(mode === 'desktop'));
+    els.widthMobile.setAttribute('aria-pressed', String(mode === 'mobile'));
+    fitFrame();
+  }
+
+  els.viewBoard.addEventListener('click', () => setView('board'));
+  els.viewPreview.addEventListener('click', () => setView('preview'));
+  els.widthDesktop.addEventListener('click', () => setFrameMode('desktop'));
+  els.widthMobile.addEventListener('click', () => setFrameMode('mobile'));
 
   // Wiring
 
