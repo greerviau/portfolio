@@ -1,6 +1,6 @@
 .photo-grid {
   --photo-gap: 24px;
-  --portrait-width: calc((100% - 72px) / 4);
+  --portrait-width: calc((100% - 48px) / 3);
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -83,11 +83,6 @@
 @media (max-width: 600px) {
   .photography-page {
     padding: 60px 20px;
-  }
-}
-@media (min-width: 601px) and (max-width: 900px) {
-  .photo-grid {
-    --portrait-width: calc((100% - 48px) / 3);
   }
 }
 @media (max-width: 600px) {

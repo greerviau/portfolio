@@ -17,14 +17,19 @@ For a file named `mountains.jpg`, an entry could be:
 ]
 ```
 
-List photos in display order. The homepage shows the first three entries.
+The homepage selects the first three entries from the list.
 The gallery shows all entries and preserves their aspect ratios.
+Desktop rows contain a landscape and a portrait, or three portraits.
+The layout may move a later portrait forward to pair it with a landscape.
 Landscape photos span two portrait columns, including the gap between them.
+When a partner is unavailable, the remaining photos occupy centered partial rows.
+On phones, landscape photos fill the row and portraits fit two per row.
 Photos are vertically centered in each row, and incomplete rows are centered horizontally.
 The homepage uses the same layout without cropping photos.
 
 Optional `width` and `height` fields specify the image dimensions in pixels.
-These let the browser reserve space and choose the tile width before the image loads.
+Width greater than height identifies a landscape; other photos use a portrait tile.
+These fields let the browser reserve space and arrange rows before images load.
 Without them, the layout updates when the image loads.
 Select a photo to open its image file. Use the browser's Back button to return.
 An empty list displays "Photos coming soon." on both pages.

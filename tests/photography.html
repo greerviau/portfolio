@@ -83,12 +83,29 @@ for (const path of ['/', '/photography/']) {
     const [landscape, portrait, last] = figures.map(figure => figure.getBoundingClientRect());
     assert(landscape.width >= portrait.width * 2, 'Landscape must span two portrait columns');
     assert(Math.abs(landscape.y + landscape.height / 2 - portrait.y - portrait.height / 2) < 1, 'Photos must be vertically centered');
-    assert(Math.abs(portrait.y - last.y) < 1, 'Portraits must share the first row');
+    assert(last.y >= Math.max(landscape.bottom, portrait.bottom), 'Third photo must start a new row');
     const images = [...doc.querySelectorAll('[data-photo-grid] img')];
     assert(images[0].width / images[0].height > 1.49 && images[0].width / images[0].height < 1.51, 'Landscape aspect ratio must be preserved');
     assert(images[1].width / images[1].height > 0.66 && images[1].width / images[1].height < 0.68, 'Portrait aspect ratio must be preserved');
   });
 }
+await check('Consecutive landscapes pair with portraits without losing photos', '/photography/', [
+  mixedPhotos[0], { ...mixedPhotos[0], file: 'landscape-2.jpg' },
+  mixedPhotos[1], mixedPhotos[2],
+  { ...mixedPhotos[1], file: 'portrait-3.jpg' },
+  { ...mixedPhotos[1], file: 'portrait-4.jpg' },
+  { ...mixedPhotos[1], file: 'portrait-5.jpg' }
+], doc => {
+  const figures = [...doc.querySelectorAll('figure')];
+  assert(figures.length === 7, 'Every photo must be displayed');
+  const centers = figures.map(figure => {
+    const rect = figure.getBoundingClientRect();
+    return Math.round(rect.y + rect.height / 2);
+  });
+  assert(centers[0] === centers[1] && centers[2] === centers[3], 'Each landscape must share its row with a portrait');
+  assert(centers[4] === centers[5] && centers[5] === centers[6], 'Remaining portraits must share a row of three');
+  assert(new Set([...doc.querySelectorAll('figure img')].map(img => img.src)).size === 7, 'Photos must not be duplicated');
+});
 await check('Incomplete rows are centered', '/photography/', mixedPhotos.slice(1, 2), doc => {
   const grid = doc.querySelector('[data-photo-grid]').getBoundingClientRect();
   const figure = doc.querySelector('figure').getBoundingClientRect();
