@@ -7,7 +7,7 @@ It shrinks any image whose long edge exceeds 2000 pixels, copies the original to
 The thumbnails load the same files as the full gallery, so large files slow both pages.
 `--max-edge` and `--quality` change the size limit and the JPEG and WebP quality.
 `--check` writes nothing and exits 1 when an image is oversized or a dimension is stale.
-Run `git config core.hooksPath .githooks` once per clone to make `git commit` run that check.
+Run `git config core.hooksPath .githooks` once per clone to make `git commit` resize oversized photos, restage them, and then run that check.
 
 `tools/gallery-editor/` offers a visual editor for this file; see its README.
 
