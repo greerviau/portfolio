@@ -1,5 +1,11 @@
 [
   {
+    "slug": "sculpting-code",
+    "title": "Sculpting Good Code",
+    "date": "2026-05-06",
+    "description": "My thoughts on the art of good software in the age of AI."
+  },
+  {
     "slug": "hello-world",
     "title": "Hello World",
     "date": "2026-05-06",
