@@ -36,6 +36,7 @@ async function check(name, path, data, verify, fail = false, width = 1280) {
       observer.observe(doc, { subtree: true, attributes: true, childList: true });
       const timeout = setTimeout(() => { observer.disconnect(); reject(Error('Gallery did not finish loading')); }, 3000);
     });
+    await new Promise(resolve => setTimeout(resolve, 100)); // let media query change events reach the page
     await verify(doc);
     output.push(`PASS ${name}`);
   } catch (error) {
@@ -86,7 +87,8 @@ for (const path of ['/', '/photography/']) {
     const [landscape, portrait, last] = figures.map(figure => figure.getBoundingClientRect());
     assert(landscape.width >= portrait.width * 2, 'Landscape must span two portrait columns');
     assert(Math.abs(landscape.y + landscape.height / 2 - portrait.y - portrait.height / 2) < 1, 'Photos must be vertically centered');
-    assert(last.y >= Math.max(landscape.bottom, portrait.bottom), 'Third photo must start a new row');
+    if (path === '/') assert(figures[2].hidden, 'Homepage must hide the photo that would start a second row');
+    else assert(last.y >= Math.max(landscape.bottom, portrait.bottom), 'Third photo must start a new row');
     const images = [...doc.querySelectorAll('[data-photo-grid] img')];
     assert(images[0].width / images[0].height > 1.49 && images[0].width / images[0].height < 1.51, 'Landscape aspect ratio must be preserved');
     assert(images[1].width / images[1].height > 0.66 && images[1].width / images[1].height < 0.68, 'Portrait aspect ratio must be preserved');
@@ -154,16 +156,45 @@ await check('Groups keep their photos separate and titles are optional', '/photo
   const style = doc.defaultView.getComputedStyle(groups[1]);
   assert(parseFloat(style.borderTopWidth) > 0 && parseFloat(style.paddingTop) > 0, 'Untitled groups need a divider and spacing');
 });
-await check('Homepage limits photos across groups and skips empty groups', '/', [
+await check('Homepage previews one row from the first group with photos', '/', [
   { title: 'Empty', photos: [] },
-  { title: 'Japan', photos: [mixedPhotos[0]] },
-  { photos: [mixedPhotos[1], mixedPhotos[2], mixedPhotos[1]] },
+  { title: 'Japan', photos: [mixedPhotos[0], mixedPhotos[1], mixedPhotos[2]] },
   { title: 'Later trip', photos: [mixedPhotos[0]] }
 ], doc => {
-  assert(doc.querySelectorAll('.photo-group').length === 2, 'Only groups with selected photos should appear');
-  assert(doc.querySelectorAll('[data-photo-grid] img').length === 3, 'Preview must remain limited to three total photos');
+  assert(doc.querySelectorAll('.photo-group').length === 1, 'Preview must show only the first group with photos');
   assert(doc.querySelector('.photo-group h3')?.textContent === 'Japan', 'Homepage title must be a subheading');
-  assert(!doc.querySelector('[data-photo-groups]').textContent.includes('Later trip'), 'Groups beyond the limit must not appear');
+  assert(!doc.querySelector('[data-photo-groups]').textContent.includes('Later trip'), 'Later groups must not appear');
+});
+const rowOf = doc => [...doc.querySelectorAll('[data-photo-grid] figure')].filter(figure => !figure.hidden)
+  .map(figure => ({ rect: figure.getBoundingClientRect(), landscape: figure.classList.contains('photo-landscape') }));
+const portrait = (file) => ({ ...mixedPhotos[1], file });
+const landscape = (file) => ({ ...mixedPhotos[0], file });
+for (const [name, list, expected, width] of [
+  ['landscape then portrait', [landscape('a.jpg'), portrait('b.jpg'), portrait('c.jpg')], 'LP', 1280],
+  ['portrait then landscape', [portrait('a.jpg'), landscape('b.jpg'), portrait('c.jpg')], 'PL', 1280],
+  ['two portraits then landscape', [portrait('a.jpg'), portrait('b.jpg'), landscape('c.jpg')], 'PP', 1280],
+  ['three portraits', [portrait('a.jpg'), portrait('b.jpg'), portrait('c.jpg'), portrait('d.jpg')], 'PPP', 1280],
+  ['two landscapes', [landscape('a.jpg'), landscape('b.jpg'), portrait('c.jpg')], 'L', 1280],
+  ['landscape on a phone', [landscape('a.jpg'), portrait('b.jpg')], 'L', 375],
+  ['portraits on a phone', [portrait('a.jpg'), portrait('b.jpg'), portrait('c.jpg')], 'PP', 375]
+]) {
+  await checkPhotos(`Homepage preview is a single row: ${name} at ${width}px`, '/', list, doc => {
+    const row = rowOf(doc);
+    assert(row.map(item => item.landscape ? 'L' : 'P').join('') === expected, `Expected ${expected}, got ${row.map(item => item.landscape ? 'L' : 'P').join('')}`);
+    const centers = row.map(item => Math.round(item.rect.y + item.rect.height / 2));
+    assert(centers.every(center => center === centers[0]), 'Preview photos must share one row');
+    assert(row.every((item, index) => index === 0 || item.rect.x > row[index - 1].rect.x), 'Preview must keep list order');
+  }, false, width);
+}
+await checkPhotos('Homepage preview trims to one row after image load reveals orientation', '/', photos.slice(0, 3), async doc => {
+  const images = [...doc.querySelectorAll('[data-photo-grid] img')];
+  await new Promise((resolve, reject) => {
+    images[0].onload = resolve;
+    images[0].onerror = reject;
+    images[0].loading = 'eager';
+    images[0].src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"></svg>');
+  });
+  assert(rowOf(doc).length === 2, 'A landscape found on load must push the third photo out of the row');
 });
 await check('Empty groups use the collection empty state', '/photography/', [
   { title: 'Empty group', photos: [] }

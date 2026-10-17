@@ -47,7 +47,8 @@ For files named `mountains.jpg` and `street.jpg`, the list could be:
 ```
 
 Groups appear in list order.
-The homepage selects the first three photos across groups and displays their group titles when provided.
+The homepage shows one row: the photos from the start of the first group with photos that fit on a single row, with that group's title when provided.
+That is a landscape and a portrait in list order, or three portraits, and on phones one landscape or two portraits.
 The gallery shows all photos and preserves their aspect ratios.
 Photos appear in list order, and the layout never reorders them.
 A landscape spans two portrait columns, including the gap between them, so a desktop row holds three portraits, or a landscape and a portrait in either order.
@@ -56,7 +57,6 @@ A photo that does not fit the space left in a row starts the next row, and incom
 Photos from different groups never share a row.
 On phones, landscape photos fill the row and portraits fit two per row.
 Photos are vertically centered in each row.
-The homepage uses the same layout without cropping photos.
 
 Optional `width` and `height` fields specify the image dimensions in pixels.
 Width greater than height identifies a landscape; other photos use a portrait tile.
