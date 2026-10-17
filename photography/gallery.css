@@ -1,3 +1,14 @@
+.photo-group + .photo-group {
+  margin-top: 64px;
+  padding-top: 48px;
+  border-top: 1px solid var(--hr-color, #666);
+}
+.photo-group-title {
+  margin: 0 0 28px;
+  font-size: 24px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
 .photo-grid {
   --photo-gap: 24px;
   --portrait-width: calc((100% - 48px) / 3);
@@ -39,6 +50,7 @@
   --bg-color: #111;
   --link-color: #ddd;
   --project-bg-color: #333;
+  --hr-color: #666;
   margin: 0 auto;
   padding: 60px 50px;
   max-width: 1280px;
@@ -54,6 +66,7 @@
   --bg-color: #fff;
   --link-color: #111;
   --project-bg-color: #f9f9f9;
+  --hr-color: #ccc;
 }
 .photography-page a {
   color: var(--link-color);

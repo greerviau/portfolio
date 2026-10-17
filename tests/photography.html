@@ -45,12 +45,15 @@ async function check(name, path, data, verify, fail = false, width = 1280) {
     results.textContent = output.join('\n');
   }
 }
+function checkPhotos(name, path, photos, verify, fail = false, width = 1280) {
+  return check(name, path, [{ photos }], verify, fail, width);
+}
 function assert(value, message) { if (!value) throw Error(message); }
-await check('Homepage preview links to gallery and limits photos', '/', photos, doc => {
+await checkPhotos('Homepage preview links to gallery and limits photos', '/', photos, doc => {
   assert(doc.querySelector('a[href="photography/"]'), 'Missing gallery link');
   assert(doc.querySelectorAll('[data-photo-grid] img').length === 3, 'Expected three preview images');
 });
-await check('Gallery renders all photos and safe captions', '/photography/', photos, doc => {
+await checkPhotos('Gallery renders all photos and safe captions', '/photography/', photos, doc => {
   const images = [...doc.querySelectorAll('[data-photo-grid] img')];
   assert(images.length === 5, 'Expected five images');
   assert(images[0].alt === 'Photo 0', 'Missing alt text');
@@ -61,15 +64,15 @@ await check('Gallery renders all photos and safe captions', '/photography/', pho
   assert(!doc.querySelector('figcaption b'), 'Caption was interpreted as HTML');
 });
 for (const path of ['/', '/photography/']) {
-  await check(`Empty collection on ${path}`, path, [], doc => {
+  await checkPhotos(`Empty collection on ${path}`, path, [], doc => {
     assert(doc.querySelector('[data-photo-status]').textContent.includes('Photos coming soon'), 'Missing empty state');
     assert(!doc.querySelector('[data-photo-grid] img'), 'Empty collection has images');
   });
 }
-await check('Failed manifest displays a loading error', '/photography/', [], doc => {
+await checkPhotos('Failed manifest displays a loading error', '/photography/', [], doc => {
   assert(doc.querySelector('[data-photo-status]').textContent.includes('Unable to load'), 'Missing error state');
 }, true);
-await check('Invalid manifest displays a loading error', '/photography/', {}, doc => {
+await checkPhotos('Invalid manifest displays a loading error', '/photography/', {}, doc => {
   assert(doc.querySelector('[data-photo-status]').textContent.includes('Unable to load'), 'Missing error state');
 });
 const mixedPhotos = [
@@ -78,7 +81,7 @@ const mixedPhotos = [
   { file: 'portrait-2.jpg', alt: 'Another portrait', width: 800, height: 1200 }
 ];
 for (const path of ['/', '/photography/']) {
-  await check(`Mixed orientations on ${path}`, path, mixedPhotos, doc => {
+  await checkPhotos(`Mixed orientations on ${path}`, path, mixedPhotos, doc => {
     const figures = [...doc.querySelectorAll('[data-photo-grid] figure')];
     const [landscape, portrait, last] = figures.map(figure => figure.getBoundingClientRect());
     assert(landscape.width >= portrait.width * 2, 'Landscape must span two portrait columns');
@@ -89,7 +92,7 @@ for (const path of ['/', '/photography/']) {
     assert(images[1].width / images[1].height > 0.66 && images[1].width / images[1].height < 0.68, 'Portrait aspect ratio must be preserved');
   });
 }
-await check('Consecutive landscapes pair with portraits without losing photos', '/photography/', [
+await checkPhotos('Consecutive landscapes pair with portraits without losing photos', '/photography/', [
   mixedPhotos[0], { ...mixedPhotos[0], file: 'landscape-2.jpg' },
   mixedPhotos[1], mixedPhotos[2],
   { ...mixedPhotos[1], file: 'portrait-3.jpg' },
@@ -106,13 +109,13 @@ await check('Consecutive landscapes pair with portraits without losing photos', 
   assert(centers[4] === centers[5] && centers[5] === centers[6], 'Remaining portraits must share a row of three');
   assert(new Set([...doc.querySelectorAll('figure img')].map(img => img.src)).size === 7, 'Photos must not be duplicated');
 });
-await check('Incomplete rows are centered', '/photography/', mixedPhotos.slice(1, 2), doc => {
+await checkPhotos('Incomplete rows are centered', '/photography/', mixedPhotos.slice(1, 2), doc => {
   const grid = doc.querySelector('[data-photo-grid]').getBoundingClientRect();
   const figure = doc.querySelector('figure').getBoundingClientRect();
   assert(Math.abs(figure.x + figure.width / 2 - grid.x - grid.width / 2) < 1, 'Single tile must be centered');
   assert(figure.width < grid.width / 2, 'Single portrait must retain its tile width');
 });
-await check('Image loading detects orientation without metadata', '/photography/', photos.slice(0, 2), async doc => {
+await checkPhotos('Image loading detects orientation without metadata', '/photography/', photos.slice(0, 2), async doc => {
   const images = [...doc.querySelectorAll('[data-photo-grid] img')];
   await Promise.all(images.map((image, index) => new Promise((resolve, reject) => {
     image.onload = resolve;
@@ -125,11 +128,48 @@ await check('Image loading detects orientation without metadata', '/photography/
   const [landscape, portrait] = images.map(image => image.getBoundingClientRect());
   assert(landscape.width > portrait.width * 2, 'Loaded landscape must occupy two columns');
 });
-await check('Mobile gallery fits the viewport', '/photography/', mixedPhotos, doc => {
+await checkPhotos('Mobile gallery fits the viewport', '/photography/', mixedPhotos, doc => {
   assert(doc.documentElement.scrollWidth <= 375, 'Gallery must not overflow');
   const [landscape, portrait] = [...doc.querySelectorAll('figure')].map(figure => figure.getBoundingClientRect());
   assert(landscape.width > portrait.width * 2, 'Mobile landscape must span both columns');
 }, false, 375);
+await check('Groups keep their photos separate and titles are optional', '/photography/', [
+  { title: 'Japan - January 2026', photos: [mixedPhotos[0]] },
+  { photos: [mixedPhotos[1]] },
+  { title: '   ', photos: [mixedPhotos[2]] },
+  { title: '<b>Another trip</b>', photos: [mixedPhotos[0]] }
+], doc => {
+  const groups = [...doc.querySelectorAll('.photo-group')];
+  assert(groups.length === 4, 'Expected four separate groups');
+  assert(groups[0].querySelector('h2')?.textContent === 'Japan - January 2026', 'Missing group title');
+  assert(!groups[1].querySelector('h2, h3') && !groups[2].querySelector('h2, h3'), 'Untitled groups must not render headings');
+  assert(groups[3].querySelector('h2')?.textContent === '<b>Another trip</b>' && !groups[3].querySelector('b'), 'Title must be plain text');
+  assert(groups.every(group => group.querySelectorAll('figure').length === 1), 'Row pairing must not move photos between groups');
+  const style = doc.defaultView.getComputedStyle(groups[1]);
+  assert(parseFloat(style.borderTopWidth) > 0 && parseFloat(style.paddingTop) > 0, 'Untitled groups need a divider and spacing');
+});
+await check('Homepage limits photos across groups and skips empty groups', '/', [
+  { title: 'Empty', photos: [] },
+  { title: 'Japan', photos: [mixedPhotos[0]] },
+  { photos: [mixedPhotos[1], mixedPhotos[2], mixedPhotos[1]] },
+  { title: 'Later trip', photos: [mixedPhotos[0]] }
+], doc => {
+  assert(doc.querySelectorAll('.photo-group').length === 2, 'Only groups with selected photos should appear');
+  assert(doc.querySelectorAll('[data-photo-grid] img').length === 3, 'Preview must remain limited to three total photos');
+  assert(doc.querySelector('.photo-group h3')?.textContent === 'Japan', 'Homepage title must be a subheading');
+  assert(!doc.querySelector('[data-photo-groups]').textContent.includes('Later trip'), 'Groups beyond the limit must not appear');
+});
+await check('Empty groups use the collection empty state', '/photography/', [
+  { title: 'Empty group', photos: [] }
+], doc => {
+  assert(!doc.querySelector('.photo-group'), 'Empty groups must not create headings or dividers');
+  assert(doc.querySelector('[data-photo-status]').textContent.includes('Photos coming soon'), 'Expected collection empty state');
+});
+await check('Invalid group title displays an error', '/photography/', [
+  { title: 12, photos: [mixedPhotos[0]] }
+], doc => {
+  assert(doc.querySelector('[data-photo-status]').textContent.includes('Unable to load'), 'Invalid title must show an error');
+});
 document.title = output.some(line => line.startsWith('FAIL')) ? 'FAIL' : 'PASS';
 </script>
 </html>
