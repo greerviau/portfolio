@@ -12,8 +12,10 @@ const photos = Array.from({ length: 5 }, (_, index) => ({
   alt: `Photo ${index}`,
   caption: index === 0 ? '<b>A caption</b>' : ''
 }));
-async function check(name, path, data, verify, fail = false) {
+async function check(name, path, data, verify, fail = false, width = 1280) {
   const frame = document.createElement('iframe');
+  frame.style.width = `${width}px`;
+  frame.style.height = '900px';
   try {
     const response = await fetch(path);
     if (!response.ok) throw Error(`Page returned ${response.status}`);
@@ -34,7 +36,7 @@ async function check(name, path, data, verify, fail = false) {
       observer.observe(doc, { subtree: true, attributes: true, childList: true });
       const timeout = setTimeout(() => { observer.disconnect(); reject(Error('Gallery did not finish loading')); }, 3000);
     });
-    verify(doc);
+    await verify(doc);
     output.push(`PASS ${name}`);
   } catch (error) {
     output.push(`FAIL ${name}: ${error.message}`);
@@ -70,6 +72,47 @@ await check('Failed manifest displays a loading error', '/photography/', [], doc
 await check('Invalid manifest displays a loading error', '/photography/', {}, doc => {
   assert(doc.querySelector('[data-photo-status]').textContent.includes('Unable to load'), 'Missing error state');
 });
+const mixedPhotos = [
+  { file: 'landscape.jpg', alt: 'Landscape', width: 1200, height: 800 },
+  { file: 'portrait.jpg', alt: 'Portrait', width: 800, height: 1200 },
+  { file: 'portrait-2.jpg', alt: 'Another portrait', width: 800, height: 1200 }
+];
+for (const path of ['/', '/photography/']) {
+  await check(`Mixed orientations on ${path}`, path, mixedPhotos, doc => {
+    const figures = [...doc.querySelectorAll('[data-photo-grid] figure')];
+    const [landscape, portrait, last] = figures.map(figure => figure.getBoundingClientRect());
+    assert(landscape.width >= portrait.width * 2, 'Landscape must span two portrait columns');
+    assert(Math.abs(landscape.y + landscape.height / 2 - portrait.y - portrait.height / 2) < 1, 'Photos must be vertically centered');
+    assert(Math.abs(portrait.y - last.y) < 1, 'Portraits must share the first row');
+    const images = [...doc.querySelectorAll('[data-photo-grid] img')];
+    assert(images[0].width / images[0].height > 1.49 && images[0].width / images[0].height < 1.51, 'Landscape aspect ratio must be preserved');
+    assert(images[1].width / images[1].height > 0.66 && images[1].width / images[1].height < 0.68, 'Portrait aspect ratio must be preserved');
+  });
+}
+await check('Incomplete rows are centered', '/photography/', mixedPhotos.slice(1, 2), doc => {
+  const grid = doc.querySelector('[data-photo-grid]').getBoundingClientRect();
+  const figure = doc.querySelector('figure').getBoundingClientRect();
+  assert(Math.abs(figure.x + figure.width / 2 - grid.x - grid.width / 2) < 1, 'Single tile must be centered');
+  assert(figure.width < grid.width / 2, 'Single portrait must retain its tile width');
+});
+await check('Image loading detects orientation without metadata', '/photography/', photos.slice(0, 2), async doc => {
+  const images = [...doc.querySelectorAll('[data-photo-grid] img')];
+  await Promise.all(images.map((image, index) => new Promise((resolve, reject) => {
+    image.onload = resolve;
+    image.onerror = reject;
+    image.loading = 'eager';
+    const width = index === 0 ? 1200 : 800;
+    const height = index === 0 ? 800 : 1200;
+    image.src = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"></svg>`);
+  })));
+  const [landscape, portrait] = images.map(image => image.getBoundingClientRect());
+  assert(landscape.width > portrait.width * 2, 'Loaded landscape must occupy two columns');
+});
+await check('Mobile gallery fits the viewport', '/photography/', mixedPhotos, doc => {
+  assert(doc.documentElement.scrollWidth <= 375, 'Gallery must not overflow');
+  const [landscape, portrait] = [...doc.querySelectorAll('figure')].map(figure => figure.getBoundingClientRect());
+  assert(landscape.width > portrait.width * 2, 'Mobile landscape must span both columns');
+}, false, 375);
 document.title = output.some(line => line.startsWith('FAIL')) ? 'FAIL' : 'PASS';
 </script>
 </html>

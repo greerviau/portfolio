@@ -21,6 +21,18 @@
         const figure = document.createElement('figure');
         const link = document.createElement('a');
         const image = document.createElement('img');
+        const hasDimensions = Number.isInteger(photo.width) && photo.width > 0 &&
+          Number.isInteger(photo.height) && photo.height > 0;
+        if (hasDimensions) {
+          image.width = photo.width;
+          image.height = photo.height;
+          figure.classList.toggle('photo-landscape', photo.width > photo.height);
+        }
+        image.addEventListener('load', () => {
+          image.width = image.naturalWidth;
+          image.height = image.naturalHeight;
+          figure.classList.toggle('photo-landscape', image.naturalWidth > image.naturalHeight);
+        });
         image.src = new URL(`images/${encodeURIComponent(photo.file)}`, base).href;
         image.alt = photo.alt;
         image.loading = 'lazy';

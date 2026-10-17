@@ -1,12 +1,19 @@
 .photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: 24px;
-  align-items: start;
+  --photo-gap: 24px;
+  --portrait-width: calc((100% - 72px) / 4);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--photo-gap);
 }
 .photo-grid figure {
   margin: 0;
   min-width: 0;
+  flex: 0 0 var(--portrait-width);
+}
+.photo-grid figure.photo-landscape {
+  flex-basis: calc(var(--portrait-width) * 2 + var(--photo-gap));
 }
 .photo-grid a {
   display: block;
@@ -16,10 +23,6 @@
   width: 100%;
   height: auto;
   background: var(--project-bg-color);
-}
-.photo-preview img {
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
 }
 .photo-grid figcaption {
   margin-top: 10px;
@@ -80,5 +83,16 @@
 @media (max-width: 600px) {
   .photography-page {
     padding: 60px 20px;
+  }
+}
+@media (min-width: 601px) and (max-width: 900px) {
+  .photo-grid {
+    --portrait-width: calc((100% - 48px) / 3);
+  }
+}
+@media (max-width: 600px) {
+  .photo-grid {
+    --photo-gap: 16px;
+    --portrait-width: calc((100% - 16px) / 2);
   }
 }

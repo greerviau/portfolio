@@ -19,6 +19,13 @@ For a file named `mountains.jpg`, an entry could be:
 
 List photos in display order. The homepage shows the first three entries.
 The gallery shows all entries and preserves their aspect ratios.
+Landscape photos span two portrait columns, including the gap between them.
+Photos are vertically centered in each row, and incomplete rows are centered horizontally.
+The homepage uses the same layout without cropping photos.
+
+Optional `width` and `height` fields specify the image dimensions in pixels.
+These let the browser reserve space and choose the tile width before the image loads.
+Without them, the layout updates when the image loads.
 Select a photo to open its image file. Use the browser's Back button to return.
 An empty list displays "Photos coming soon." on both pages.
 
