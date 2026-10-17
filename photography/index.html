@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Photography by Greer Viau.">
+  <title>Photography - Greer Viau</title>
+  <link rel="icon" href="../g.png">
+  <link rel="stylesheet" href="gallery.css">
+  <script src="gallery.js" defer></script>
+</head>
+<body class="photography-page">
+  <button class="theme-toggle" type="button" aria-label="Toggle light theme" aria-pressed="false" onclick="document.body.classList.toggle('light-theme'); this.setAttribute('aria-pressed', document.body.classList.contains('light-theme'))">
+    <img class="sun" src="../sun.svg" alt="" width="40" height="40">
+    <img class="moon" src="../moon.svg" alt="" width="40" height="40">
+  </button>
+  <header>
+    <a href="../#photography">Back to home</a>
+    <h1>Photography</h1>
+    <p>A collection of my photographs.</p>
+  </header>
+  <main aria-label="Photo gallery">
+    <p data-photo-status role="status" aria-busy="true">Loading photos...</p>
+    <div class="photo-grid" data-photo-grid></div>
+    <noscript>Enable JavaScript to view the photographs.</noscript>
+  </main>
+</body>
+</html>
