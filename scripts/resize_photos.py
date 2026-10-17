@@ -28,6 +28,8 @@ IMAGES = ROOT / "photography" / "images"
 ORIGINALS = ROOT / "photography" / "originals"
 MANIFEST = ROOT / "photography" / "photos.json"
 SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+MAX_EDGE = 2000
+QUALITY = 85
 
 
 def displayed_size(path: Path) -> tuple[int, int]:
@@ -35,9 +37,9 @@ def displayed_size(path: Path) -> tuple[int, int]:
         return ImageOps.exif_transpose(img).size
 
 
-def resize(path: Path, max_edge: int, quality: int) -> None:
-    ORIGINALS.mkdir(exist_ok=True)
-    backup = ORIGINALS / path.name
+def resize(path: Path, max_edge: int = MAX_EDGE, quality: int = QUALITY, originals: Path = ORIGINALS) -> None:
+    originals.mkdir(exist_ok=True)
+    backup = originals / path.name
     if not backup.exists():
         shutil.copy2(path, backup)
     with Image.open(path) as img:
@@ -54,8 +56,8 @@ def resize(path: Path, max_edge: int, quality: int) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--max-edge", type=int, default=2000, help="longest side in pixels (default 2000)")
-    parser.add_argument("--quality", type=int, default=85, help="JPEG and WebP quality (default 85)")
+    parser.add_argument("--max-edge", type=int, default=MAX_EDGE, help=f"longest side in pixels (default {MAX_EDGE})")
+    parser.add_argument("--quality", type=int, default=QUALITY, help=f"JPEG and WebP quality (default {QUALITY})")
     parser.add_argument("--check", action="store_true", help="report problems and exit 1 without writing")
     args = parser.parse_args()
 

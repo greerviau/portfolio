@@ -9,6 +9,8 @@ The thumbnails load the same files as the full gallery, so large files slow both
 `--check` writes nothing and exits 1 when an image is oversized or a dimension is stale.
 Run `git config core.hooksPath .githooks` once per clone to make `git commit` run that check.
 
+`tools/gallery-editor/` offers a visual editor for this file; see its README.
+
 Each group requires a `photos` list and accepts an optional `title`.
 Omit `title`, or leave it blank, to display a group without a heading.
 A divider and extra spacing separate groups even when they have no titles.
