@@ -49,18 +49,18 @@ For files named `mountains.jpg` and `street.jpg`, the list could be:
 Groups appear in list order.
 The homepage selects the first three photos across groups and displays their group titles when provided.
 The gallery shows all photos and preserves their aspect ratios.
-Desktop rows contain a landscape and a portrait, or three portraits.
-The layout may move a later portrait within its group to pair it with a landscape.
+Photos appear in list order, and the layout never reorders them.
+A landscape spans two portrait columns, including the gap between them, so a desktop row holds three portraits, or a landscape and a portrait in either order.
+Place a landscape and a portrait next to each other in the list to share a row.
+A photo that does not fit the space left in a row starts the next row, and incomplete rows are centered.
 Photos from different groups never share a row.
-Landscape photos span two portrait columns, including the gap between them.
-When a partner is unavailable, the remaining photos occupy centered partial rows.
 On phones, landscape photos fill the row and portraits fit two per row.
-Photos are vertically centered in each row, and incomplete rows are centered horizontally.
+Photos are vertically centered in each row.
 The homepage uses the same layout without cropping photos.
 
 Optional `width` and `height` fields specify the image dimensions in pixels.
 Width greater than height identifies a landscape; other photos use a portrait tile.
-These fields let the browser reserve space and arrange rows before images load.
+These fields let the browser reserve space and size tiles before images load.
 Without them, the layout updates when the image loads.
 Select a photo to open its image file. Use the browser's Back button to return.
 An empty list, or groups containing no photos, displays "Photos coming soon." on both pages.

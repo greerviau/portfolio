@@ -5,28 +5,6 @@
   const status = document.querySelector('[data-photo-status]');
   const limit = Number(container.dataset.photoLimit) || Infinity;
 
-  const isLandscape = figure => figure.classList.contains('photo-landscape');
-
-  function arrangePhotos(grid, figures) {
-    const remaining = [...figures];
-    const ordered = [];
-    while (remaining.length) {
-      const first = remaining.shift();
-      if (isLandscape(first)) {
-        ordered.push(first);
-        const partner = remaining.findIndex(figure => !isLandscape(figure));
-        if (partner !== -1) ordered.push(...remaining.splice(partner, 1));
-      } else if (remaining.length >= 2 && remaining.slice(0, 2).every(figure => !isLandscape(figure))) {
-        ordered.push(first, ...remaining.splice(0, 2));
-      } else {
-        const partner = remaining.findIndex(isLandscape);
-        if (partner !== -1) ordered.push(...remaining.splice(partner, 1), first);
-        else ordered.push(first, ...remaining.splice(0, 2));
-      }
-    }
-    grid.replaceChildren(...ordered);
-  }
-
   async function loadPhotos() {
     try {
       const response = await fetch(new URL('photos.json', base));
@@ -60,7 +38,6 @@
         const grid = document.createElement('div');
         grid.className = 'photo-grid';
         grid.dataset.photoGrid = '';
-        const figures = [];
         for (const photo of selected) {
           const figure = document.createElement('figure');
           const link = document.createElement('a');
@@ -75,11 +52,7 @@
           image.addEventListener('load', () => {
             image.width = image.naturalWidth;
             image.height = image.naturalHeight;
-            const landscape = image.naturalWidth > image.naturalHeight;
-            if (landscape !== isLandscape(figure)) {
-              figure.classList.toggle('photo-landscape', landscape);
-              arrangePhotos(grid, figures);
-            }
+            figure.classList.toggle('photo-landscape', image.naturalWidth > image.naturalHeight);
           });
           image.src = new URL(`images/${encodeURIComponent(photo.file)}`, base).href;
           image.alt = photo.alt;
@@ -93,9 +66,8 @@
             caption.textContent = photo.caption;
             figure.append(caption);
           }
-          figures.push(figure);
+          grid.append(figure);
         }
-        arrangePhotos(grid, figures);
         section.append(grid);
         fragment.append(section);
         count += selected.length;
