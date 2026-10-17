@@ -159,6 +159,31 @@
     .light-theme .theme-toggle .sun {
       display: none;
     }
+    @media (max-width: 600px) {
+      body {
+        padding: 0 20px;
+      }
+      .links-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        margin: 20px 0;
+        font-size: 20px;
+      }
+      .links-container .separator {
+        display: none;
+      }
+      .project {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: none;
+        overflow-wrap: anywhere;
+      }
+      .contact a {
+        overflow-wrap: anywhere;
+      }
+    }
   </style>
 </head>
 <body>
