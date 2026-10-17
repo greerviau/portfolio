@@ -1,0 +1,106 @@
+.photo-group + .photo-group {
+  margin-top: 64px;
+  padding-top: 48px;
+  border-top: 1px solid var(--hr-color, #666);
+}
+.photo-group-title {
+  margin: 0 0 28px;
+  font-size: 24px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.photo-grid {
+  --photo-gap: 24px;
+  --portrait-width: calc((100% - 48px) / 3);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--photo-gap);
+}
+.photo-grid figure {
+  margin: 0;
+  min-width: 0;
+  flex: 0 0 var(--portrait-width);
+}
+.photo-grid figure.photo-landscape {
+  flex-basis: calc(var(--portrait-width) * 2 + var(--photo-gap));
+}
+.photo-grid a {
+  display: block;
+}
+.photo-grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--project-bg-color);
+}
+.photo-grid figcaption {
+  margin-top: 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.photo-grid a:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 5px;
+}
+.photography-page {
+  --text-color: #ddd;
+  --bg-color: #111;
+  --link-color: #ddd;
+  --project-bg-color: #333;
+  --hr-color: #666;
+  margin: 0 auto;
+  padding: 60px 50px;
+  max-width: 1280px;
+  box-sizing: border-box;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Lucida Console', monospace;
+  font-size: 18px;
+  line-height: 1.6;
+}
+.photography-page.light-theme {
+  --text-color: #111;
+  --bg-color: #fff;
+  --link-color: #111;
+  --project-bg-color: #f9f9f9;
+  --hr-color: #ccc;
+}
+.photography-page a {
+  color: var(--link-color);
+}
+.photography-page header {
+  margin-bottom: 40px;
+}
+.photography-page h1 {
+  margin-bottom: 10px;
+  font-size: 32px;
+}
+.photography-page .theme-toggle {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  border: none;
+  background: var(--bg-color);
+  cursor: pointer;
+}
+.photography-page .moon,
+.photography-page.light-theme .sun {
+  display: none;
+}
+.photography-page.light-theme .moon {
+  display: block;
+}
+@media (max-width: 600px) {
+  .photography-page {
+    padding: 60px 20px;
+  }
+}
+@media (max-width: 600px) {
+  .photo-grid {
+    --photo-gap: 16px;
+    --portrait-width: calc((100% - 16px) / 2);
+  }
+}

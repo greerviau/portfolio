@@ -1,0 +1,9 @@
+#!/bin/sh
+# Shrink oversized photos, then restage the files that were already staged.
+set -e
+uv run scripts/resize_photos.py
+staged=$(git diff --cached --name-only --diff-filter=AM -- photography/images photography/photos.json)
+if [ -n "$staged" ]; then
+  echo "$staged" | tr '\n' '\0' | xargs -0 git add --
+fi
+exec uv run scripts/resize_photos.py --check
