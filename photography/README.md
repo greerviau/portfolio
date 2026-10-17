@@ -2,7 +2,12 @@
 
 Add image files to `photography/images/`, then list them in groups in `photography/photos.json`.
 Use filenames without directory paths. JPEG, PNG, WebP, and AVIF files work in modern browsers.
-Resize and compress photos before committing them because the thumbnails load the same files as the full gallery.
+Run `uv run scripts/resize_photos.py` after adding photos.
+It shrinks any image whose long edge exceeds 2000 pixels, copies the original to `photography/originals/` (gitignored), and sets `width` and `height` in `photos.json` from the files.
+The thumbnails load the same files as the full gallery, so large files slow both pages.
+`--max-edge` and `--quality` change the size limit and the JPEG and WebP quality.
+`--check` writes nothing and exits 1 when an image is oversized or a dimension is stale.
+Run `git config core.hooksPath .githooks` once per clone to make `git commit` run that check.
 
 Each group requires a `photos` list and accepts an optional `title`.
 Omit `title`, or leave it blank, to display a group without a heading.
