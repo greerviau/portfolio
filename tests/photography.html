@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Photography tests</title>
+<h1>Photography tests</h1>
+<pre id="results">Running...</pre>
+<script type="module">
+const results = document.querySelector('#results');
+const output = [];
+const photos = Array.from({ length: 5 }, (_, index) => ({
+  file: `photo ${index}.jpg`,
+  alt: `Photo ${index}`,
+  caption: index === 0 ? '<b>A caption</b>' : ''
+}));
+async function check(name, path, data, verify, fail = false) {
+  const frame = document.createElement('iframe');
+  try {
+    const response = await fetch(path);
+    if (!response.ok) throw Error(`Page returned ${response.status}`);
+    const html = await response.text();
+    const base = new URL(path, location.href).href;
+    const setup = `<base href="${base}"><script>window.fetch = async () => ({ok:${!fail}, json:async () => ${JSON.stringify(data)}});<\/script>`;
+    const loaded = new Promise(resolve => frame.onload = resolve);
+    frame.srcdoc = html.replace('<head>', '<head>' + setup);
+    document.body.append(frame);
+    await loaded;
+    const doc = frame.contentDocument;
+    await new Promise((resolve, reject) => {
+      const ready = () => doc.querySelector('[data-photo-status]')?.getAttribute('aria-busy') === 'false';
+      if (ready()) return resolve();
+      const observer = new MutationObserver(() => {
+        if (ready()) { observer.disconnect(); clearTimeout(timeout); resolve(); }
+      });
+      observer.observe(doc, { subtree: true, attributes: true, childList: true });
+      const timeout = setTimeout(() => { observer.disconnect(); reject(Error('Gallery did not finish loading')); }, 3000);
+    });
+    verify(doc);
+    output.push(`PASS ${name}`);
+  } catch (error) {
+    output.push(`FAIL ${name}: ${error.message}`);
+  } finally {
+    frame.remove();
+    results.textContent = output.join('\n');
+  }
+}
+function assert(value, message) { if (!value) throw Error(message); }
+await check('Homepage preview links to gallery and limits photos', '/', photos, doc => {
+  assert(doc.querySelector('a[href="photography/"]'), 'Missing gallery link');
+  assert(doc.querySelectorAll('[data-photo-grid] img').length === 3, 'Expected three preview images');
+});
+await check('Gallery renders all photos and safe captions', '/photography/', photos, doc => {
+  const images = [...doc.querySelectorAll('[data-photo-grid] img')];
+  assert(images.length === 5, 'Expected five images');
+  assert(images[0].alt === 'Photo 0', 'Missing alt text');
+  assert(images[0].getAttribute('loading') === 'lazy', 'Missing lazy loading');
+  assert(images[0].src.endsWith('/photography/images/photo%200.jpg'), 'Wrong image URL');
+  assert(images[0].closest('a').href === images[0].src, 'Image must link to larger photo');
+  assert(doc.querySelector('figcaption').textContent === '<b>A caption</b>', 'Caption changed');
+  assert(!doc.querySelector('figcaption b'), 'Caption was interpreted as HTML');
+});
+for (const path of ['/', '/photography/']) {
+  await check(`Empty collection on ${path}`, path, [], doc => {
+    assert(doc.querySelector('[data-photo-status]').textContent.includes('Photos coming soon'), 'Missing empty state');
+    assert(!doc.querySelector('[data-photo-grid] img'), 'Empty collection has images');
+  });
+}
+await check('Failed manifest displays a loading error', '/photography/', [], doc => {
+  assert(doc.querySelector('[data-photo-status]').textContent.includes('Unable to load'), 'Missing error state');
+}, true);
+await check('Invalid manifest displays a loading error', '/photography/', {}, doc => {
+  assert(doc.querySelector('[data-photo-status]').textContent.includes('Unable to load'), 'Missing error state');
+});
+document.title = output.some(line => line.startsWith('FAIL')) ? 'FAIL' : 'PASS';
+</script>
+</html>
