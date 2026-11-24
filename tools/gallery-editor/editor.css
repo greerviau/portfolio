@@ -214,3 +214,4 @@ textarea { resize: vertical; min-height: 64px; }
 .preview-bar .hint { margin: 0; }
 .frame-wrap { position: relative; width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; }
 .frame-wrap iframe { display: block; border: 0; transform-origin: top left; background: #111; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }

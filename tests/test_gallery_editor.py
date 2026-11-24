@@ -91,6 +91,41 @@ class ReadGalleryTest(EditorTestCase):
             self.assertEqual(self.request("GET", path)[0], 404, path)
 
 
+class DeleteImageTest(EditorTestCase):
+    def test_deletes_the_file_and_drops_it_from_the_saved_manifest(self):
+        self.add_image("a.jpg", 300, 200)
+        self.add_image("b.jpg", 200, 300)
+        self.manifest.write_text(json.dumps([{"title": "Japan", "photos": [
+            {"file": "a.jpg", "alt": "A", "width": 300, "height": 200},
+            {"file": "b.jpg", "alt": "B", "width": 200, "height": 300},
+        ]}]))
+        status, body = self.request("DELETE", "/api/images/a.jpg")
+        self.assertEqual(status, 200)
+        self.assertFalse((self.images / "a.jpg").exists())
+        expected = [{"title": "Japan", "photos": [{"file": "b.jpg", "alt": "B", "width": 200, "height": 300}]}]
+        self.assertEqual(json.loads(self.manifest.read_text()), expected)
+        self.assertEqual(json.loads(body), {"groups": expected, "unlisted": []})
+
+    def test_deletes_an_unlisted_file_without_creating_a_manifest(self):
+        self.add_image("a.jpg", 30, 20)
+        status, _ = self.request("DELETE", "/api/images/a.jpg")
+        self.assertEqual(status, 200)
+        self.assertFalse((self.images / "a.jpg").exists())
+        self.assertFalse(self.manifest.exists())
+
+    def test_rejects_missing_files_and_paths_outside_the_images_folder(self):
+        (self.root / "photography" / "secret.jpg").write_bytes(jpeg(10, 10))
+        for path in ("/api/images/missing.jpg", "/api/images/..%2Fsecret.jpg", "/api/images/.gitkeep"):
+            with self.subTest(path):
+                self.assertEqual(self.request("DELETE", path)[0], 404)
+        self.assertTrue((self.root / "photography" / "secret.jpg").exists())
+
+    def test_requires_the_editor_header(self):
+        self.add_image("a.jpg", 30, 20)
+        self.assertEqual(self.request("DELETE", "/api/images/a.jpg", headers={})[0], 403)
+        self.assertTrue((self.images / "a.jpg").exists())
+
+
 class SaveGalleryTest(EditorTestCase):
     def test_writes_normalized_manifest_with_dimensions_read_from_disk(self):
         self.add_image("a.jpg", 300, 200)

@@ -207,7 +207,26 @@
       render();
     });
 
-    els.inspector.append(preview, meta, field('Alt text', alt, true), field('Caption', caption), field('Section', where));
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    if (found.array !== tray) {
+      const unplace = document.createElement('button');
+      unplace.type = 'button';
+      unplace.textContent = 'Remove from gallery';
+      unplace.title = 'Move to Unplaced photos; the file stays on disk';
+      unplace.addEventListener('click', () => { movePhoto(photo.file, tray, tray.length); render(); });
+      actions.append(unplace);
+    }
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'danger';
+    remove.textContent = 'Delete file';
+    remove.title = 'Delete the file from photography/images';
+    remove.disabled = busy;
+    remove.addEventListener('click', () => deletePhoto(photo.file));
+    actions.append(remove);
+
+    els.inspector.append(preview, meta, field('Alt text', alt, true), field('Caption', caption), field('Section', where), actions);
   }
 
   function render() {
@@ -350,6 +369,32 @@
     render();
   }
 
+  // Deleting
+
+  async function deletePhoto(file) {
+    if (!confirm(`Delete ${file}? This removes the file from photography/images and from the saved gallery. It cannot be undone here.`)) return;
+    busy = true;
+    els.save.disabled = true;
+    setStatus(`Deleting ${file}...`);
+    try {
+      await api('DELETE', `/api/images/${encodeURIComponent(file)}`);
+    } catch (error) {
+      busy = false;
+      setStatus(error.message, true);
+      render();
+      return;
+    }
+    const found = findPhoto(file);
+    if (found) found.array.splice(found.index, 1);
+    const saved = JSON.parse(savedSnapshot);
+    for (const group of saved) group.photos = group.photos.filter(photo => photo.file !== file);
+    savedSnapshot = JSON.stringify(saved);
+    if (selected === file) selected = null;
+    busy = false;
+    els.status.classList.remove('error');
+    render();
+  }
+
   // Saving
 
   async function save() {
@@ -471,7 +516,7 @@
     if ((event.metaKey || event.ctrlKey) && event.key === 's') {
       event.preventDefault();
       if (!els.save.disabled) save();
-    } else if (event.key === 'Delete' && selected && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+    } else if ((event.key === 'Delete' || event.key === 'Backspace') && selected && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
       const found = findPhoto(selected);
       if (found && found.array !== tray) { movePhoto(selected, tray, tray.length); render(); }
     }

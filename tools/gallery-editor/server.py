@@ -172,6 +172,21 @@ def store_upload(name, data, images, originals):
     return {"file": target.name, "width": width, "height": height}
 
 
+def delete_image(name, images, manifest):
+    """Delete a file from the images folder and drop it from the saved manifest."""
+    path = images / name
+    if (name != PurePosixPath(name).name or name.startswith(".") or "\\" in name
+            or path.suffix.lower() not in IMAGE_TYPES or not path.is_file()):
+        raise RequestError(HTTPStatus.NOT_FOUND, "Not found")
+    groups = read_manifest(manifest)
+    if any(photo.get("file") == name for group in groups for photo in group["photos"]):
+        for group in groups:
+            group["photos"] = [photo for photo in group["photos"] if photo.get("file") != name]
+        write_manifest(manifest, groups)
+    path.unlink()
+    return groups
+
+
 def make_server(root, port=8770, quiet=False):
     root = Path(root)
     images = root / "photography" / "images"
@@ -280,6 +295,9 @@ def make_server(root, port=8770, quiet=False):
                     name = parse_qs(url.query).get("name", [""])[0]
                     images.mkdir(parents=True, exist_ok=True)
                     self.send_json(200, store_upload(name, self.read_body(), images, originals))
+                elif self.command == "DELETE" and url.path.startswith("/api/images/"):
+                    groups = delete_image(unquote(url.path[len("/api/images/"):]), images, manifest)
+                    self.send_json(200, {"groups": groups, "unlisted": list_unlisted(images, groups)})
                 elif self.command == "GET" and url.path in STATIC:
                     filename, content_type = STATIC[url.path]
                     self.send_bytes(200, (HERE / filename).read_bytes(), content_type)
@@ -294,7 +312,7 @@ def make_server(root, port=8770, quiet=False):
             except RequestError as err:
                 self.send_json(err.status, {"error": str(err)})
 
-        do_GET = do_PUT = do_POST = handle_request
+        do_GET = do_PUT = do_POST = do_DELETE = handle_request
 
     return ThreadingHTTPServer(("127.0.0.1", port), Handler)
 
