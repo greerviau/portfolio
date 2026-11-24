@@ -116,28 +116,16 @@
         "height": 1326
       },
       {
-        "file": "000077400009.jpg",
-        "alt": "Tuscany home driveway",
-        "width": 1326,
-        "height": 2000
-      },
-      {
         "file": "000077400021.jpg",
         "alt": "Florence alleyway",
         "width": 1326,
         "height": 2000
       },
       {
-        "file": "000077410002.jpg",
-        "alt": "Florence skyline",
-        "width": 2000,
-        "height": 1326
-      },
-      {
-        "file": "000077410011.jpg",
-        "alt": "View from the ponte vecchio",
-        "width": 2000,
-        "height": 1326
+        "file": "000077400013.jpg",
+        "alt": "Tower outside the window",
+        "width": 1326,
+        "height": 2000
       },
       {
         "file": "000077400005.jpg",
@@ -146,10 +134,10 @@
         "height": 1326
       },
       {
-        "file": "000077400013.jpg",
-        "alt": "Tower outside the window",
-        "width": 1326,
-        "height": 2000
+        "file": "000077410011.jpg",
+        "alt": "View from the ponte vecchio",
+        "width": 2000,
+        "height": 1326
       },
       {
         "file": "000077400014.jpg",
@@ -162,6 +150,12 @@
         "alt": "Venice waterway",
         "width": 1326,
         "height": 2000
+      },
+      {
+        "file": "000077410002.jpg",
+        "alt": "Florence skyline",
+        "width": 2000,
+        "height": 1326
       }
     ]
   },
