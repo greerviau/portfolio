@@ -100,7 +100,7 @@ await checkPhotos('Photos keep manifest order and share rows by width', '/photog
   { ...mixedPhotos[1], file: 'portrait-3.jpg' }, { ...mixedPhotos[1], file: 'portrait-4.jpg' },
   { ...mixedPhotos[1], file: 'portrait-5.jpg' }
 ], doc => {
-  const figures = [...doc.querySelectorAll('figure')];
+  const figures = [...doc.querySelectorAll('[data-photo-grid] figure')];
   const names = figures.map(figure => decodeURIComponent(figure.querySelector('img').src.split('/').pop()));
   assert(names.join() === 'portrait-1.jpg,landscape-1.jpg,landscape-2.jpg,portrait-2.jpg,portrait-3.jpg,portrait-4.jpg,portrait-5.jpg',
     `Photos must stay in manifest order, got ${names.join()}`);
@@ -114,12 +114,12 @@ await checkPhotos('A landscape does not jump ahead of the portraits before it', 
   { ...mixedPhotos[1], file: 'portrait-1.jpg' }, { ...mixedPhotos[1], file: 'portrait-2.jpg' },
   { ...mixedPhotos[0], file: 'landscape-1.jpg' }
 ], doc => {
-  const [first, second, landscape] = [...doc.querySelectorAll('figure')].map(figure => figure.getBoundingClientRect());
+  const [first, second, landscape] = [...doc.querySelectorAll('[data-photo-grid] figure')].map(figure => figure.getBoundingClientRect());
   assert(first.y === second.y && landscape.y > first.bottom, 'Two portraits must fill a row before a landscape starts the next');
 });
 await checkPhotos('Incomplete rows are centered', '/photography/', mixedPhotos.slice(1, 2), doc => {
   const grid = doc.querySelector('[data-photo-grid]').getBoundingClientRect();
-  const figure = doc.querySelector('figure').getBoundingClientRect();
+  const figure = doc.querySelector('[data-photo-grid] figure').getBoundingClientRect();
   assert(Math.abs(figure.x + figure.width / 2 - grid.x - grid.width / 2) < 1, 'Single tile must be centered');
   assert(figure.width < grid.width / 2, 'Single portrait must retain its tile width');
 });
@@ -138,7 +138,7 @@ await checkPhotos('Image loading detects orientation without metadata', '/photog
 });
 await checkPhotos('Mobile gallery fits the viewport', '/photography/', mixedPhotos, doc => {
   assert(doc.documentElement.scrollWidth <= 375, 'Gallery must not overflow');
-  const [landscape, portrait] = [...doc.querySelectorAll('figure')].map(figure => figure.getBoundingClientRect());
+  const [landscape, portrait] = [...doc.querySelectorAll('[data-photo-grid] figure')].map(figure => figure.getBoundingClientRect());
   assert(landscape.width > portrait.width * 2, 'Mobile landscape must span both columns');
 }, false, 375);
 await check('Groups keep their photos separate and titles are optional', '/photography/', [
@@ -152,7 +152,7 @@ await check('Groups keep their photos separate and titles are optional', '/photo
   assert(groups[0].querySelector('h2')?.textContent === 'Japan - January 2026', 'Missing group title');
   assert(!groups[1].querySelector('h2, h3') && !groups[2].querySelector('h2, h3'), 'Untitled groups must not render headings');
   assert(groups[3].querySelector('h2')?.textContent === '<b>Another trip</b>' && !groups[3].querySelector('b'), 'Title must be plain text');
-  assert(groups.every(group => group.querySelectorAll('figure').length === 1), 'Row pairing must not move photos between groups');
+  assert(groups.every(group => group.querySelectorAll('[data-photo-grid] figure').length === 1), 'Row pairing must not move photos between groups');
   const style = doc.defaultView.getComputedStyle(groups[1]);
   assert(parseFloat(style.borderTopWidth) > 0 && parseFloat(style.paddingTop) > 0, 'Untitled groups need a divider and spacing');
 });
@@ -195,6 +195,60 @@ await checkPhotos('Homepage preview trims to one row after image load reveals or
     images[0].src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"></svg>');
   });
   assert(rowOf(doc).length === 2, 'A landscape found on load must push the third photo out of the row');
+});
+const click = (target, init = {}) =>
+  target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init }));
+const key = (doc, name) =>
+  doc.querySelector('[data-lightbox]').dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true }));
+await check('Selecting a photo opens it in an overlay', '/photography/', [
+  { title: 'First', photos: photos.slice(0, 2) },
+  { title: 'Second', photos: photos.slice(2, 3) }
+], doc => {
+  const links = [...doc.querySelectorAll('[data-photo-grid] a')];
+  assert(!doc.querySelector('[data-lightbox]')?.open, 'Overlay must start closed');
+  assert(!click(links[0]), 'Selecting a photo must not navigate away');
+  const lightbox = doc.querySelector('[data-lightbox]');
+  assert(lightbox?.open && lightbox.matches(':modal'), 'Overlay must open as a modal dialog');
+  const image = lightbox.querySelector('img');
+  assert(image.src === links[0].href && image.alt === 'Photo 0', 'Overlay must show the selected photo');
+  assert(lightbox.querySelector('figcaption').textContent === '<b>A caption</b>' && !lightbox.querySelector('figcaption b'),
+    'Overlay must show the caption as text');
+  key(doc, 'ArrowRight');
+  assert(image.alt === 'Photo 1' && lightbox.querySelector('figcaption').hidden, 'Right arrow must show the next photo');
+  click(lightbox.querySelector('[data-lightbox-next]'));
+  assert(image.alt === 'Photo 2', 'Next must continue into the following group');
+  click(lightbox.querySelector('[data-lightbox-next]'));
+  assert(image.alt === 'Photo 0', 'Next must wrap to the first photo');
+  key(doc, 'ArrowLeft');
+  assert(image.alt === 'Photo 2', 'Left arrow must show the previous photo');
+  click(lightbox.querySelector('[data-lightbox-close]'));
+  assert(!lightbox.open, 'Close button must close the overlay');
+  click(links[1]);
+  click(lightbox);
+  assert(!lightbox.open, 'Selecting the backdrop must close the overlay');
+  click(links[1]);
+  click(image);
+  assert(lightbox.open, 'Selecting the photo itself must keep the overlay open');
+  lightbox.close();
+  let galleryPrevented;
+  doc.addEventListener('click', event => { galleryPrevented = event.defaultPrevented; event.preventDefault(); }, { once: true });
+  click(links[0], { metaKey: true });
+  assert(galleryPrevented === false && !lightbox.open, 'Modifier clicks must keep the browser default');
+});
+await checkPhotos('Overlay with one photo hides navigation', '/photography/', photos.slice(0, 1), doc => {
+  click(doc.querySelector('[data-photo-grid] a'));
+  const lightbox = doc.querySelector('[data-lightbox]');
+  assert(lightbox.open, 'Overlay must open');
+  assert(lightbox.querySelector('[data-lightbox-prev]').hidden && lightbox.querySelector('[data-lightbox-next]').hidden,
+    'A single photo must not show previous and next buttons');
+});
+await checkPhotos('Homepage preview opens photos in an overlay', '/', photos, doc => {
+  const links = [...doc.querySelectorAll('[data-photo-grid] figure:not([hidden]) a')];
+  assert(!click(links[0]), 'Selecting a preview photo must not navigate away');
+  const lightbox = doc.querySelector('[data-lightbox]');
+  assert(lightbox?.open, 'Overlay must open on the homepage');
+  for (let step = 0; step < links.length; step++) key(doc, 'ArrowRight');
+  assert(lightbox.querySelector('img').src === links[0].href, 'Homepage navigation must cycle through visible previews only');
 });
 await check('Empty groups use the collection empty state', '/photography/', [
   { title: 'Empty group', photos: [] }

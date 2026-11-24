@@ -104,3 +104,105 @@
     --portrait-width: calc((100% - 16px) / 2);
   }
 }
+.lightbox {
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #000;
+  color: #ddd;
+  font-family: 'Lucida Console', monospace;
+}
+.lightbox::backdrop {
+  background: transparent;
+}
+body:has(.lightbox[open]) {
+  overflow: hidden;
+}
+.lightbox figure {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  margin: 0;
+  padding: 56px 72px;
+}
+.lightbox img {
+  display: block;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+.lightbox figcaption {
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.lightbox button {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  color: #ddd;
+  cursor: pointer;
+}
+.lightbox button[hidden] {
+  display: none;
+}
+.lightbox button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+.lightbox button:focus-visible {
+  outline: 2px solid #ddd;
+  outline-offset: 2px;
+}
+.lightbox svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lightbox-close {
+  top: 12px;
+  right: 12px;
+}
+.lightbox-prev,
+.lightbox-next {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.lightbox-prev {
+  left: 12px;
+}
+.lightbox-next {
+  right: 12px;
+}
+@media (max-width: 600px) {
+  .lightbox figure {
+    padding: 64px 12px;
+  }
+  .lightbox-prev,
+  .lightbox-next {
+    top: auto;
+    bottom: 8px;
+    transform: none;
+  }
+}

@@ -62,7 +62,10 @@ Optional `width` and `height` fields specify the image dimensions in pixels.
 Width greater than height identifies a landscape; other photos use a portrait tile.
 These fields let the browser reserve space and size tiles before images load.
 Without them, the layout updates when the image loads.
-Select a photo to open its image file. Use the browser's Back button to return.
+Select a photo, on either page, to view it full size in an overlay without leaving the page.
+The previous and next buttons and the left and right arrow keys move through the photos shown on that page, wrapping at the ends.
+Escape, the close button, or a click outside the photo closes the overlay.
+Cmd-, Ctrl-, Shift-, or middle-clicking a photo still opens its image file in a new tab or window.
 An empty list, or groups containing no photos, displays "Photos coming soon." on both pages.
 
 Run `python3 -m http.server 8765` from the repository root to preview the site at `http://localhost:8765`.

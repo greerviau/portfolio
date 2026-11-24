@@ -21,6 +21,63 @@
   }
   phone.addEventListener('change', () => rowTrimmers.forEach(trim => trim()));
 
+  const icon = path => `<svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="${path}"/></svg>`;
+  const lightbox = document.createElement('dialog');
+  lightbox.className = 'lightbox';
+  lightbox.dataset.lightbox = '';
+  lightbox.setAttribute('aria-label', 'Photo viewer');
+  lightbox.innerHTML = `
+    <figure><img alt=""><figcaption hidden></figcaption></figure>
+    <button type="button" class="lightbox-close" data-lightbox-close aria-label="Close">${icon('M5 5l14 14M19 5L5 19')}</button>
+    <button type="button" class="lightbox-prev" data-lightbox-prev aria-label="Previous photo">${icon('M15 4l-8 8 8 8')}</button>
+    <button type="button" class="lightbox-next" data-lightbox-next aria-label="Next photo">${icon('M9 4l8 8-8 8')}</button>`;
+  const lightboxFigure = lightbox.querySelector('figure');
+  const lightboxImage = lightbox.querySelector('img');
+  const lightboxCaption = lightbox.querySelector('figcaption');
+  const prevButton = lightbox.querySelector('[data-lightbox-prev]');
+  const nextButton = lightbox.querySelector('[data-lightbox-next]');
+  let lightboxLinks = [];
+  let lightboxIndex = 0;
+  document.body.append(lightbox);
+
+  function showPhoto(index) {
+    lightboxIndex = (index + lightboxLinks.length) % lightboxLinks.length;
+    const link = lightboxLinks[lightboxIndex];
+    const thumbnail = link.querySelector('img');
+    lightboxImage.width = thumbnail.width;
+    lightboxImage.height = thumbnail.height;
+    lightboxImage.src = link.href;
+    lightboxImage.alt = thumbnail.alt;
+    const caption = link.closest('figure').querySelector('figcaption')?.textContent ?? '';
+    lightboxCaption.textContent = caption;
+    lightboxCaption.hidden = !caption;
+  }
+
+  container.addEventListener('click', event => {
+    const link = event.target.closest('a');
+    if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    lightboxLinks = [...container.querySelectorAll('figure:not([hidden]) a')];
+    const single = lightboxLinks.length < 2;
+    prevButton.hidden = single;
+    nextButton.hidden = single;
+    showPhoto(lightboxLinks.indexOf(link));
+    lightbox.showModal();
+  });
+  lightbox.addEventListener('click', event => {
+    if (event.target === lightbox || event.target === lightboxFigure) lightbox.close();
+    else if (event.target.closest('[data-lightbox-close]')) lightbox.close();
+    else if (event.target.closest('[data-lightbox-prev]')) showPhoto(lightboxIndex - 1);
+    else if (event.target.closest('[data-lightbox-next]')) showPhoto(lightboxIndex + 1);
+  });
+  lightbox.addEventListener('keydown', event => {
+    if (lightboxLinks.length < 2) return;
+    if (event.key === 'ArrowLeft') showPhoto(lightboxIndex - 1);
+    else if (event.key === 'ArrowRight') showPhoto(lightboxIndex + 1);
+    else return;
+    event.preventDefault();
+  });
+
   async function loadPhotos() {
     try {
       const response = await fetch(new URL('photos.json', base));
